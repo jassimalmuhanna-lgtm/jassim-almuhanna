@@ -48,6 +48,10 @@ button{cursor:pointer}
 header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
 header h1{margin:0;font-size:1.7rem;font-weight:700;letter-spacing:0}
 header .date{color:var(--muted);font-size:.9rem}
+.hbtns{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.share{background:var(--surface);border:1.5px solid var(--accent);color:var(--accent);border-radius:99px;padding:7px 14px;font-weight:600;font-size:.9rem}
+.shot{width:100%;border-radius:12px;border:1px solid var(--line);display:block;-webkit-touch-callout:default}
+.hint{font-size:.85rem;color:var(--muted);text-align:center}
 .ro{font-size:.8rem;background:var(--surface-2);border:1px solid var(--line);color:var(--muted);padding:3px 10px;border-radius:99px}
 
 .today{display:flex;gap:10px}
@@ -135,7 +139,10 @@ label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:var(--mut
       <h1>مخزوني</h1>
       <div class="date" id="date"></div>
     </div>
-    <span class="ro" id="ro" hidden>عرض فقط</span>
+    <div class="hbtns">
+      <span class="ro" id="ro" hidden>عرض فقط</span>
+      <button class="share" id="shareBtn" hidden>مشاركة كصورة</button>
+    </div>
   </header>
 
   <div class="banner" id="banner" hidden></div>
@@ -205,6 +212,7 @@ label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:var(--mut
           '<span class="bar"><i style="width:'+pct+'%"></i></span></button>';
       }).join('');
     }
+    $('#shareBtn').hidden=!items.length;
     $('#totalBal').textContent=fmt(totalBal);
     $('#todayOut').textContent=fmt(todayOut);
 
@@ -276,9 +284,102 @@ label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;color:var(--mut
     } finally { busy=false; }
   }
 
+  // ---------- share as image ----------
+  function snapshotRows(){
+    return [...state.items].sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)).map(it=>({name:it.name, ...stats(it.id)}));
+  }
+  function wrapName(ctx, text, max){
+    if(ctx.measureText(text).width<=max) return text;
+    let t=text; while(t.length>1 && ctx.measureText(t+'…').width>max) t=t.slice(0,-1);
+    return t+'…';
+  }
+  async function buildImage(){
+    try{ await document.fonts.load('700 40px "IBM Plex Sans Arabic"'); await document.fonts.load('500 30px "IBM Plex Sans Arabic"'); }catch(_){}
+    const rows=snapshotRows();
+    const W=1080, P=64, rowH=150, headH=250, footH=210;
+    const H=headH+Math.max(1,rows.length)*rowH+footH;
+    const c=document.createElement('canvas'); c.width=W; c.height=H;
+    const x=c.getContext('2d'); const F='"IBM Plex Sans Arabic", Tahoma, sans-serif';
+    x.direction='rtl';
+    x.fillStyle='#eef2f0'; x.fillRect(0,0,W,H);
+    // header band
+    x.fillStyle='#0d7556'; x.fillRect(0,0,W,headH-40);
+    x.fillStyle='#ffffff'; x.textAlign='right'; x.textBaseline='alphabetic';
+    x.font='700 64px '+F; x.fillText('المخزون المتبقي', W-P, 110);
+    x.font='500 34px '+F; x.globalAlpha=.85;
+    const d=new Date();
+    x.fillText(d.toLocaleDateString('ar',{weekday:'long',day:'numeric',month:'long'})+'  ·  '+pad(d.getHours())+':'+pad(d.getMinutes()), W-P, 165);
+    x.globalAlpha=1;
+    // column labels
+    x.fillStyle='#5d6b64'; x.font='500 28px '+F;
+    x.textAlign='right'; x.fillText('الصنف', W-P, headH-2);
+    x.textAlign='center'; x.fillText('طلع اليوم', 400, headH-2); x.fillText('باقي', P+110, headH-2);
+    let y=headH+20, tb=0, tt=0;
+    rows.forEach((r,i)=>{
+      tb+=r.bal; tt+=r.today;
+      x.fillStyle='#ffffff'; roundRect(x,P-16,y,W-2*(P-16),rowH-20,24); x.fill();
+      const pct=r.inn>0?r.bal/r.inn:0;
+      const col = r.bal<=0 ? '#b42318' : pct<=.2 ? '#a86b00' : '#0d7556';
+      const mid=y+(rowH-20)/2;
+      x.textBaseline='middle';
+      x.fillStyle='#15201b'; x.font='600 44px '+F; x.textAlign='right';
+      x.fillText(wrapName(x, r.name, 520), W-P-10, mid - (r.bal<=0||pct<=.2?14:0));
+      if(r.bal<=0||pct<=.2){ x.font='600 26px '+F; x.fillStyle=col; x.fillText(r.bal<=0?'خلص':'قليل', W-P-10, mid+30); }
+      x.direction='ltr';
+      x.fillStyle='#b8430f'; x.font='700 46px '+F; x.textAlign='center'; x.fillText(fmt(r.today), 400, mid);
+      x.fillStyle=col; x.font='700 64px '+F; x.fillText(fmt(r.bal), P+110, mid);
+      x.direction='rtl'; x.textBaseline='alphabetic';
+      y+=rowH;
+    });
+    if(!rows.length){ x.fillStyle='#5d6b64'; x.font='500 36px '+F; x.textAlign='center'; x.fillText('ما في أصناف', W/2, y+60); y+=rowH; }
+    // totals
+    y+=20; x.fillStyle='#15201b'; roundRect(x,P-16,y,W-2*(P-16),130,24); x.fill();
+    x.textBaseline='middle'; const m=y+65;
+    x.fillStyle='#ffffff'; x.font='600 40px '+F; x.textAlign='right'; x.fillText('المجموع', W-P-10, m);
+    x.direction='ltr'; x.textAlign='center';
+    x.fillStyle='#f08a55'; x.font='700 46px '+F; x.fillText(fmt(tt), 400, m);
+    x.fillStyle='#3fbf8f'; x.font='700 60px '+F; x.fillText(fmt(tb), P+110, m);
+    return c;
+  }
+  function roundRect(x,a,b,w,h,r){ x.beginPath(); x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r); x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath(); }
+  function shareText(){
+    const d=new Date(); const rows=snapshotRows();
+    return 'المخزون المتبقي – '+dateLabel(dayKey(d))+'\n'+rows.map(r=>'• '+r.name+': باقي '+fmt(r.bal)+' (طلع اليوم '+fmt(r.today)+')').join('\n');
+  }
+  let shotBlob=null;
+  async function openShare(){
+    state.openId=null;
+    shell('<div class="sh-head"><h2>مشاركة كصورة</h2><button class="x" data-close aria-label="إغلاق">×</button></div><div class="hint">جاري تجهيز الصورة…</div>');
+    const c=await buildImage();
+    shotBlob=await new Promise(r=>c.toBlob(r,'image/png'));
+    const url=c.toDataURL('image/png');
+    shell(
+      '<div class="sh-head"><h2>مشاركة كصورة</h2><button class="x" data-close aria-label="إغلاق">×</button></div>'+
+      '<img class="shot" src="'+url+'" alt="صورة المخزون المتبقي">'+
+      '<div class="hint">اضغط مطوّلاً على الصورة واختر «حفظ» أو «مشاركة» وأرسلها بالواتساب.</div>'+
+      '<div class="btns"><button class="btn primary" data-saveimg>حفظ الصورة</button><button class="btn ghost" data-copytxt>نسخ كنص</button></div>'+
+      '<div class="err" id="err"></div>'
+    );
+  }
+
   document.addEventListener('click', e=>{
     const t=e.target;
     if(t.closest('[data-close]')){ closeSheet(); return; }
+    if(t.closest('#shareBtn')){ openShare(); return; }
+    if(t.closest('[data-saveimg]')){
+      (async()=>{
+        const dl = window.claude ? await window.claude.use('downloads') : null;
+        if(!dl || !shotBlob){ $('#err').textContent='الحفظ مو متاح هنا، اضغط مطوّلاً على الصورة بدلها'; return; }
+        try{ await dl.save({filename:'المخزون-'+dayKey()+'.png', data:shotBlob}); toast('انحفظت الصورة'); }
+        catch(err){ if(!err||err.code!=='declined') $('#err').textContent='ما انحفظت، اضغط مطوّلاً على الصورة بدلها'; }
+      })();
+      return;
+    }
+    if(t.closest('[data-copytxt]')){
+      const txt=shareText();
+      navigator.clipboard.writeText(txt).then(()=>toast('انتسخ، الصقه بالواتساب'), ()=>{ $('#err').textContent='ما قدرت أنسخ'; });
+      return;
+    }
     const card=t.closest('.card'); if(card){ openItem(card.dataset.id); return; }
     if(t.closest('#addBtn')){ openAdd(); return; }
 
