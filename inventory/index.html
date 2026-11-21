@@ -142,7 +142,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
   <section>
     <h3>Today's summary</h3>
     <table>
-      <thead><tr><th>Item</th><th>Stock in</th><th>Out today</th><th>Remaining</th></tr></thead>
+      <thead><tr><th>Item</th><th>Stock in</th><th>Discharge</th><th>Remaining</th></tr></thead>
       <tbody id="tbody"></tbody>
       <tfoot><tr><td>Total</td><td class="num" id="fIn">0</td><td class="num o" id="fOut">0</td><td class="num b" id="fBal">0</td></tr></tfoot>
     </table>
@@ -195,7 +195,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
         (state.canWrite?'<button class="plus" data-plus="'+esc(it.id)+'" aria-label="Add stock to '+esc(it.name)+'">+</button>':'')+'</div>'+
         '<div class="stock"><div class="k">In stock</div><div class="n num"></div></div>'+
         '<div class="bar"><i></i></div>'+
-        '<div class="outbox"><label for="out-'+esc(it.id)+'">Out today</label>'+
+        '<div class="outbox"><label for="out-'+esc(it.id)+'">Discharge</label>'+
         '<input id="out-'+esc(it.id)+'" class="num" type="number" inputmode="numeric" min="0" step="1" data-out="'+esc(it.id)+'"'+(state.canWrite?'':' readonly')+'>'+
         '<span class="err"></span></div>'+
       '</div>').join('');
@@ -262,7 +262,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     if(qty>maxToday){ err.textContent='Only '+fmt(maxToday)+' available'; inp.value=s.todayOut||''; return; }
     const ref=state.db.doc('outs/'+id+'_'+today);
     const ok=await guard(async()=>{ if(qty===0) await ref.delete(); else await ref.set({itemId:id, date:today, qty, at:Date.now()}); });
-    if(ok){ const it=state.items.find(i=>i.id===id); toast(it.name+': out today '+fmt(qty)+' · left '+fmt(maxToday-qty)); }
+    if(ok){ const it=state.items.find(i=>i.id===id); toast(it.name+': discharge '+fmt(qty)+' · left '+fmt(maxToday-qty)); }
   }
 
   document.addEventListener('change', e=>{ const inp=e.target.closest('[data-out]'); if(inp && state.canWrite) saveOut(inp.dataset.out, inp); });
@@ -307,7 +307,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     x.globalAlpha=1;
     x.fillStyle='#5d6b64'; x.font='600 26px '+F;
     x.textAlign='left'; x.fillText('ITEM', P, headH-8);
-    x.textAlign='center'; x.fillText('STOCK IN', C3, headH-8); x.fillText('OUT TODAY', C2, headH-8); x.fillText('REMAINING', C1, headH-8);
+    x.textAlign='center'; x.fillText('STOCK IN', C3, headH-8); x.fillText('DISCHARGE', C2, headH-8); x.fillText('REMAINING', C1, headH-8);
     let y=headH+12, tb=0, tt=0, ti=0;
     rows.forEach(r=>{
       tb+=r.bal; tt+=r.todayOut; ti+=r.inn;
@@ -336,7 +336,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
   function shareText(){
     const d=new Date();
     return 'Alf3 · '+d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'\n'+
-      sorted().map(it=>{const s=stats(it.id); return it.name+': out today '+fmt(s.todayOut)+' · remaining '+fmt(s.bal);}).join('\n');
+      sorted().map(it=>{const s=stats(it.id); return it.name+': discharge '+fmt(s.todayOut)+' · remaining '+fmt(s.bal);}).join('\n');
   }
   let shotBlob=null;
   async function openShare(){
