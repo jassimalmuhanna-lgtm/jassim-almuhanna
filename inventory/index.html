@@ -290,46 +290,75 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
 
   // ---------- share as image ----------
   async function buildImage(){
-    try{ await document.fonts.load('700 40px "IBM Plex Sans"'); await document.fonts.load('700 40px "IBM Plex Mono"'); }catch(_){}
+    try{ await Promise.all([document.fonts.load('700 40px "IBM Plex Sans"'),document.fonts.load('600 40px "IBM Plex Sans"'),document.fonts.load('700 40px "IBM Plex Mono"')]); }catch(_){}
+    const K={bg:'#eef2f0',sf:'#ffffff',s2:'#f4f7f5',ln:'#d9e2dd',fg:'#15201b',mu:'#5d6b64',ac:'#0d7556',acs:'#dcefe7',out:'#b8430f',outs:'#fbe6da',wa:'#a86b00',was:'#fbefd2',em:'#b42318',ems:'#fbe0dd'};
+    const F='"IBM Plex Sans", Arial, sans-serif', M='"IBM Plex Mono", Menlo, monospace';
     const rows=sorted().map(it=>({name:it.name,...stats(it.id)}));
-    const W=1080, P=64, rowH=150, headH=260, footH=200;
-    const H=headH+Math.max(1,rows.length)*rowH+footH;
+    const names=Object.fromEntries(state.items.map(i=>[i.id,i.name]));
+    const added=state.ins.filter(m=>m.date===today && names[m.itemId]!==undefined).sort((a,b)=>b.at-a.at);
+    const W=1080, P=60, G=30, tw=(W-2*P-G)/2, th=500;
+    const tileRows=Math.ceil(rows.length/2);
+    const yTiles=300, ySum=yTiles+tileRows*(th+G)+40;
+    const tableH=70+rows.length*80+80;
+    const yLog=ySum+60+tableH+60;
+    const logH=Math.max(1,added.length)*90;
+    const H=yLog+60+logH+70;
     const c=document.createElement('canvas'); c.width=W; c.height=H;
-    const x=c.getContext('2d'); const F='"IBM Plex Sans", Arial, sans-serif', M='"IBM Plex Mono", Menlo, monospace';
-    const C1=W-P-60, C2=W-P-300, C3=P+360; // remaining, out today, stock in (centers)
-    x.fillStyle='#eef2f0'; x.fillRect(0,0,W,H);
-    x.fillStyle='#0d7556'; x.fillRect(0,0,W,headH-50);
-    x.fillStyle='#ffffff'; x.textAlign='left'; x.textBaseline='alphabetic';
-    x.font='700 72px '+M; x.fillText('Alf3', P, 112);
+    const x=c.getContext('2d');
+    const T=(s,X,Y,font,col,al)=>{ x.font=font; x.fillStyle=col; x.textAlign=al||'left'; x.fillText(s,X,Y); };
+    x.fillStyle=K.bg; x.fillRect(0,0,W,H);
+    x.textBaseline='alphabetic';
     const d=new Date();
-    x.font='500 36px '+F; x.globalAlpha=.9;
-    x.fillText(d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'  ·  '+pad(d.getHours())+':'+pad(d.getMinutes()), P, 170);
-    x.globalAlpha=1;
-    x.fillStyle='#5d6b64'; x.font='600 26px '+F;
-    x.textAlign='left'; x.fillText('ITEM', P, headH-8);
-    x.textAlign='center'; x.fillText('STOCK IN', C3, headH-8); x.fillText('DISCHARGE', C2, headH-8); x.fillText('REMAINING', C1, headH-8);
-    let y=headH+12, tb=0, tt=0, ti=0;
-    rows.forEach(r=>{
-      tb+=r.bal; tt+=r.todayOut; ti+=r.inn;
-      const pct=r.inn>0?r.bal/r.inn:0; const flag=r.bal<=0?'OUT':pct<=.2?'LOW':'';
-      const col = r.bal<=0 ? '#b42318' : pct<=.2 ? '#a86b00' : '#0d7556';
-      x.fillStyle='#ffffff'; rr(x,P-16,y,W-2*(P-16),rowH-20,24); x.fill();
-      const mid=y+(rowH-20)/2; x.textBaseline='middle';
-      x.fillStyle='#15201b'; x.font='700 60px '+M; x.textAlign='left'; x.fillText(r.name, P+6, mid);
-      if(flag){ x.font='700 24px '+F; x.fillStyle=col; x.fillText(flag, P+90, mid); }
-      x.textAlign='center';
-      x.fillStyle='#5d6b64'; x.font='600 40px '+F; x.fillText(fmt(r.inn), C3, mid);
-      x.fillStyle='#b8430f'; x.font='700 46px '+F; x.fillText(fmt(r.todayOut), C2, mid);
-      x.fillStyle=col; x.font='700 62px '+F; x.fillText(fmt(r.bal), C1, mid);
-      x.textBaseline='alphabetic'; y+=rowH;
+    T('Alf3',P,130,'700 92px '+M,K.fg);
+    T(d.toLocaleDateString('en-GB',{weekday:'long'}),P,195,'700 40px '+F,K.fg);
+    T(d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}),P,245,'400 32px '+F,K.mu);
+    T('Updated '+pad(d.getHours())+':'+pad(d.getMinutes()),W-P,130,'600 30px '+F,K.mu,'right');
+    // tiles
+    rows.forEach((r,i)=>{
+      const tx=P+(i%2)*(tw+G), ty=yTiles+Math.floor(i/2)*(th+G);
+      const pct=r.inn>0?Math.max(0,Math.min(1,r.bal/r.inn)):0;
+      const col=r.bal<=0?K.em:pct<=.2?K.wa:K.fg, barc=r.bal<=0?K.em:pct<=.2?K.wa:K.ac;
+      x.fillStyle=K.sf; rr(x,tx,ty,tw,th,40); x.fill(); x.strokeStyle=K.ln; x.lineWidth=2; x.stroke();
+      T(r.name,tx+36,ty+115,'700 100px '+M,K.fg);
+      const flag=r.bal<=0?'OUT':pct<=.2?'LOW':'';
+      if(flag){ x.font='700 34px '+F; const lw=x.measureText(r.name).width; x.font='700 100px '+M; const nw=x.measureText(r.name).width;
+        const px=tx+36+nw+16, fw=(x.font='700 24px '+F, x.measureText(flag).width+28);
+        x.fillStyle=r.bal<=0?K.ems:K.was; rr(x,px,ty+62,fw,40,20); x.fill(); T(flag,px+fw/2,ty+90,'700 24px '+F,r.bal<=0?K.em:K.wa,'center'); }
+      T('IN STOCK',tx+36,ty+180,'600 26px '+F,K.mu);
+      T(fmt(r.bal),tx+36,ty+268,'700 88px '+F,col);
+      x.fillStyle=K.s2; rr(x,tx+36,ty+292,tw-72,12,6); x.fill();
+      if(pct>0){ x.fillStyle=barc; rr(x,tx+36,ty+292,Math.max(12,(tw-72)*pct),12,6); x.fill(); }
+      x.setLineDash([8,8]); x.strokeStyle=K.ln; x.beginPath(); x.moveTo(tx+36,ty+334); x.lineTo(tx+tw-36,ty+334); x.stroke(); x.setLineDash([]);
+      T('DISCHARGE',tx+36,ty+376,'600 26px '+F,K.out);
+      x.fillStyle=K.outs; rr(x,tx+36,ty+394,tw-72,80,20); x.fill();
+      T(fmt(r.todayOut),tx+tw/2,ty+452,'700 50px '+F,K.out,'center');
     });
-    y+=16; x.fillStyle='#15201b'; rr(x,P-16,y,W-2*(P-16),130,24); x.fill();
-    const m=y+65; x.textBaseline='middle';
-    x.fillStyle='#ffffff'; x.font='600 40px '+F; x.textAlign='left'; x.fillText('Total', P+6, m);
-    x.textAlign='center';
-    x.fillStyle='#c9d6d0'; x.font='600 40px '+F; x.fillText(fmt(ti), C3, m);
-    x.fillStyle='#f08a55'; x.font='700 46px '+F; x.fillText(fmt(tt), C2, m);
-    x.fillStyle='#3fbf8f'; x.font='700 60px '+F; x.fillText(fmt(tb), C1, m);
+    // summary table
+    T("TODAY'S SUMMARY",P,ySum+30,'600 26px '+F,K.mu);
+    const ty0=ySum+60, cw=W-2*P, cIn=P+cw*0.48, cDis=P+cw*0.74, cRem=P+cw-36;
+    x.save(); rr(x,P,ty0,cw,tableH,30); x.fillStyle=K.sf; x.fill(); x.clip();
+    x.fillStyle=K.s2; x.fillRect(P,ty0,cw,70); x.fillRect(P,ty0+tableH-80,cw,80);
+    x.fillStyle=K.ln; for(let k=0;k<=rows.length;k++){ x.fillRect(P,ty0+70+k*80-1,cw,2); }
+    x.restore(); x.strokeStyle=K.ln; x.lineWidth=2; rr(x,P,ty0,cw,tableH,30); x.stroke();
+    ['ITEM','STOCK IN','DISCHARGE','REMAINING'].forEach((h,j)=>T(h,[P+36,cIn,cDis,cRem][j],ty0+45,'600 24px '+F,K.mu,j?'right':'left'));
+    let tI=0,tD=0,tB=0;
+    rows.forEach((r,k)=>{ const yy=ty0+70+k*80+52; tI+=r.inn; tD+=r.todayOut; tB+=r.bal;
+      T(r.name,P+36,yy,'700 34px '+M,K.fg); T(fmt(r.inn),cIn,yy,'400 32px '+F,K.fg,'right');
+      T(fmt(r.todayOut),cDis,yy,'600 32px '+F,K.out,'right'); T(fmt(r.bal),cRem,yy,'700 32px '+F,K.fg,'right'); });
+    const fy=ty0+tableH-28;
+    T('Total',P+36,fy,'700 32px '+F,K.fg); T(fmt(tI),cIn,fy,'700 32px '+F,K.fg,'right');
+    T(fmt(tD),cDis,fy,'700 32px '+F,K.out,'right'); T(fmt(tB),cRem,fy,'700 32px '+F,K.fg,'right');
+    // stock added today
+    T('STOCK ADDED TODAY',P,yLog+30,'600 26px '+F,K.mu);
+    const ly=yLog+60;
+    x.fillStyle=K.sf; rr(x,P,ly,cw,logH,30); x.fill(); x.strokeStyle=K.ln; x.lineWidth=2; x.stroke();
+    if(!added.length) T('Nothing added today.',P+36,ly+56,'400 30px '+F,K.mu);
+    added.forEach((m,k)=>{ const yy=ly+k*90;
+      if(k){ x.fillStyle=K.ln; x.fillRect(P,yy-1,cw,2); }
+      x.fillStyle=K.acs; rr(x,P+30,yy+20,130,50,14); x.fill();
+      T('+'+fmt(m.qty),P+95,yy+56,'700 30px '+F,K.ac,'center');
+      T(names[m.itemId],P+190,yy+56,'700 32px '+M,K.fg);
+      T(timeOf(m.at),P+cw-36,yy+56,'400 28px '+F,K.mu,'right'); });
     return c;
   }
   function rr(x,a,b,w,h,r){ x.beginPath(); x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r); x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath(); }
@@ -344,7 +373,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     const c=await buildImage();
     shotBlob=await new Promise(r=>c.toBlob(r,'image/png'));
     shell('<div class="sh-head"><h2>Share image</h2><button class="x" data-close aria-label="Close">×</button></div>'+
-      '<img class="shot" src="'+c.toDataURL('image/png')+'" alt="Alf3 stock summary">'+
+      '<img class="shot" src="'+c.toDataURL('image/png')+'" alt="Alf3 full page">'+
       '<div class="hint">Press and hold the image to save or share it on WhatsApp.</div>'+
       '<div class="btns"><button class="btn primary" data-saveimg>Save image</button><button class="btn ghost" data-copytxt>Copy as text</button></div>'+
       '<div class="err" id="err"></div>');
