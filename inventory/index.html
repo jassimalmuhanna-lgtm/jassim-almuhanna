@@ -116,6 +116,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
 .hint{font-size:.85rem;color:var(--muted);text-align:center}
 .shot{width:100%;border-radius:12px;border:1px solid var(--line);display:block;-webkit-touch-callout:default}
 .view{display:flex;flex-direction:column;gap:16px}
+[hidden]{display:none!important}
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;gap:8px;background:var(--surface);border-top:1px solid var(--line);
   padding-top:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));justify-content:center}
@@ -513,7 +514,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     shell('<div class="sh-head"><h2>Share image</h2><button class="x" data-close aria-label="Close">×</button></div>'+
       '<img class="shot" src="'+c.toDataURL('image/png')+'" alt="'+(view==='month'?'Alf3 monthly discharge':'Alf3 full page')+'">'+
       '<div class="hint">Press and hold the image to save or share it on WhatsApp.</div>'+
-      '<div class="btns"><button class="btn primary" data-saveimg>Save image</button><button class="btn ghost" data-copytxt>Copy as text</button></div>'+
+      '<div class="btns"><button class="btn primary" data-sendimg>Send image</button><button class="btn ghost" data-saveimg>Save image</button></div>'+
       '<div class="err" id="err"></div>');
   }
 
@@ -537,6 +538,18 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     }
     const undo=t.closest('[data-undo]');
     if(undo){ guard(async()=>{ await state.db.doc('ins/'+undo.dataset.undo).delete(); toast('Undone'); }); return; }
+    if(t.closest('[data-sendimg]')){
+      (async()=>{
+        if(!shotBlob){ $('#err').textContent='Image not ready yet.'; return; }
+        const file=new File([shotBlob],(view==='month'?'Alf3-'+monthInfo().y+'-'+pad(monthInfo().m+1)+'-monthly':'Alf3-'+today)+'.png',{type:'image/png'});
+        try{
+          if(navigator.canShare && navigator.canShare({files:[file]})){
+            await navigator.share({files:[file], title:'Alf3', text:shareText()});
+          } else { $('#err').textContent='Sharing is not supported here. Use Save image.'; }
+        }catch(err){ if(!err||err.name!=='AbortError') $('#err').textContent='Could not share. Use Save image.'; }
+      })();
+      return;
+    }
     if(t.closest('[data-saveimg]')){
       (async()=>{
         const dl = window.claude ? await window.claude.use('downloads') : null;
