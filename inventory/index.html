@@ -173,9 +173,9 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
   <section>
     <h3>Today's summary</h3>
     <table>
-      <thead><tr><th>Item</th><th>Stock in</th><th>Discharge</th><th>Remaining</th></tr></thead>
+      <thead><tr><th>Item</th><th>Bought (all time)</th><th>Discharge today</th><th>Left now</th></tr></thead>
       <tbody id="tbody"></tbody>
-      <tfoot><tr><td>Total</td><td class="num" id="fIn">0</td><td class="num o" id="fOut">0</td><td class="num b" id="fBal">0</td></tr></tfoot>
+      <tfoot><tr><td>All items</td><td class="num" id="fIn">0</td><td class="num o" id="fOut">0</td><td class="num b" id="fBal">0</td></tr></tfoot>
     </table>
   </section>
 
@@ -394,13 +394,13 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     x.fillStyle=K.s2; x.fillRect(P,ty0,cw,70); x.fillRect(P,ty0+tableH-80,cw,80);
     x.fillStyle=K.ln; for(let k=0;k<=rows.length;k++){ x.fillRect(P,ty0+70+k*80-1,cw,2); }
     x.restore(); x.strokeStyle=K.ln; x.lineWidth=2; rr(x,P,ty0,cw,tableH,30); x.stroke();
-    ['ITEM','STOCK IN','DISCHARGE','REMAINING'].forEach((h,j)=>T(h,[P+36,cIn,cDis,cRem][j],ty0+45,'600 24px '+F,K.mu,j?'right':'left'));
+    ['ITEM','BOUGHT','DISCHARGE TODAY','LEFT NOW'].forEach((h,j)=>T(h,[P+36,cIn,cDis,cRem][j],ty0+45,'600 24px '+F,K.mu,j?'right':'left'));
     let tI=0,tD=0,tB=0;
     rows.forEach((r,k)=>{ const yy=ty0+70+k*80+52; tI+=r.inn; tD+=r.todayOut; tB+=r.bal;
       T(r.name,P+36,yy,'700 34px '+M,K.fg); T(fmt(r.inn),cIn,yy,'400 32px '+F,K.fg,'right');
       T(fmt(r.todayOut),cDis,yy,'600 32px '+F,K.out,'right'); T(fmt(r.bal),cRem,yy,'700 32px '+F,K.fg,'right'); });
     const fy=ty0+tableH-28;
-    T('Total',P+36,fy,'700 32px '+F,K.fg); T(fmt(tI),cIn,fy,'700 32px '+F,K.fg,'right');
+    T('All items',P+36,fy,'700 32px '+F,K.fg); T(fmt(tI),cIn,fy,'700 32px '+F,K.fg,'right');
     T(fmt(tD),cDis,fy,'700 32px '+F,K.out,'right'); T(fmt(tB),cRem,fy,'700 32px '+F,K.fg,'right');
     // stock added today
     T('STOCK ADDED TODAY',P,yLog+30,'600 26px '+F,K.mu);
@@ -421,7 +421,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     if(view==='month'){ const {mi,items,rows,tot}=monthData();
       return 'Alf3 · '+mi.name+' · Discharge\nDate | '+items.map(i=>i.name).join(' | ')+'\n'+
         rows.filter(r=>!r.future).map(r=>pad(r.d)+' '+r.wd+' | '+r.vals.map(fmt).join(' | ')).join('\n')+
-        '\nTotal | '+tot.map(fmt).join(' | '); }
+        '\nMonth total | '+tot.map(fmt).join(' | '); }
     return 'Alf3 · '+d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'\n'+
       sorted().map(it=>{const s=stats(it.id); return it.name+': discharge '+fmt(s.todayOut)+' · remaining '+fmt(s.bal);}).join('\n');
   }
@@ -454,7 +454,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
       return '<tr class="'+cls+'"><td class="d"><b class="num">'+pad(r.d)+'</b> '+r.wd+'</td>'+
         r.vals.map(v=> r.future ? '<td class="z">·</td>' : v ? '<td class="num v">'+fmt(v)+'</td>' : '<td class="num z">0</td>').join('')+'</tr>';
     }).join('');
-    $('#mFoot').innerHTML='<td>Total</td>'+tot.map(v=>'<td class="num v">'+fmt(v)+'</td>').join('');
+    $('#mFoot').innerHTML='<td>Month total</td>'+tot.map(v=>'<td class="num v">'+fmt(v)+'</td>').join('');
   }
   function setView(v){
     view=v;
@@ -502,7 +502,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
         else T(fmt(v),cx(j),by,(v?'700':'400')+' 28px '+F,v?K.out:K.fade,'center'); });
     });
     const fy=y0+tH-28;
-    T('Total',P+32,fy,'700 32px '+F,K.fg);
+    T('Month total',P+32,fy,'700 32px '+F,K.fg);
     tot.forEach((v,j)=>T(fmt(v),cx(j),fy,'700 32px '+F,K.out,'center'));
     return c;
   }
