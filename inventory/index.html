@@ -38,7 +38,7 @@
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
 body{color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
-.wrap{max-width:560px;margin:0 auto;padding-block:16px 40px;
+.wrap{max-width:560px;margin:0 auto;padding-block:16px calc(96px + env(safe-area-inset-bottom,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex;flex-direction:column;gap:16px}
 button,input{font:inherit;color:inherit}
@@ -115,7 +115,36 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
 .err{color:var(--empty);font-size:.88rem;min-height:1.2em;text-align:center}
 .hint{font-size:.85rem;color:var(--muted);text-align:center}
 .shot{width:100%;border-radius:12px;border:1px solid var(--line);display:block;-webkit-touch-callout:default}
-.toast{position:fixed;inset-inline:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));margin:0 auto;max-width:360px;z-index:30;
+.view{display:flex;flex-direction:column;gap:16px}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;gap:8px;background:var(--surface);border-top:1px solid var(--line);
+  padding-top:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));justify-content:center}
+.tab{flex:1;max-width:260px;border:0;border-radius:12px;padding:12px;font-weight:600;font-size:1rem;background:var(--surface-2);color:var(--muted)}
+.tab[aria-current="page"]{background:var(--accent);color:var(--accent-fg)}
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mnav{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:1.6rem;line-height:1;flex:none}
+.mnav:disabled{opacity:.35}
+.mtitle{text-align:center;min-width:0}
+.mtitle b{display:block;font-size:1.25rem}
+.mtitle small{color:var(--out);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.mscroll{overflow-x:auto;border-radius:14px}
+.mtable{font-size:.95rem}
+.mtable th,.mtable td{text-align:center;padding:8px 10px}
+.mtable th:first-child,.mtable td:first-child{text-align:left;white-space:nowrap}
+.mtable thead th{position:sticky;top:0}
+.mtable thead th:not(:first-child){font-family:var(--mono);font-size:1rem;color:var(--fg);letter-spacing:0;text-transform:none}
+.mtable td.d{color:var(--muted)}
+.mtable td.d b{color:var(--fg);font-weight:600;display:inline-block;min-width:1.6em}
+.mtable td.v{color:var(--out);font-weight:600}
+.mtable td.z{color:var(--line)}
+.mtable tr.fri td{background:var(--surface-2)}
+.mtable tr.now td{background:var(--out-soft)}
+.mtable tr.now td.d b{color:var(--out)}
+.mtable tr.future td{color:var(--line)}
+.mtable tfoot td{color:var(--fg)}
+.mtable tfoot td.v{color:var(--out)}
+.mnote{margin:0;font-size:.82rem;color:var(--muted);text-align:center}
+.toast{position:fixed;inset-inline:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));margin:0 auto;max-width:360px;z-index:30;
   background:var(--fg);color:var(--bg);border-radius:12px;padding:10px 14px;text-align:center;font-size:.95rem}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .2s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
 @media (prefers-reduced-motion:reduce){.bar i{transition:none}}
@@ -135,6 +164,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
 
   <div class="banner" id="banner" hidden></div>
 
+  <div class="view" id="viewToday">
   <div class="grid" id="grid">
     <div class="empty">Loading stock…</div>
   </div>
@@ -152,7 +182,29 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     <h3>Stock added today</h3>
     <div class="log" id="inLog"><div class="none">Nothing added today.</div></div>
   </section>
+  </div>
+
+  <div class="view" id="viewMonth" hidden>
+    <div class="mhead">
+      <button class="mnav" id="mPrev" aria-label="Previous month">‹</button>
+      <div class="mtitle"><b id="mName"></b><small>Discharge per day</small></div>
+      <button class="mnav" id="mNext" aria-label="Next month">›</button>
+    </div>
+    <div class="mscroll">
+      <table class="mtable">
+        <thead><tr id="mHeadRow"><th>Date</th></tr></thead>
+        <tbody id="mBody"></tbody>
+        <tfoot><tr id="mFoot"></tr></tfoot>
+      </table>
+    </div>
+    <p class="mnote">Filled in automatically from the daily Discharge entries.</p>
+  </div>
 </div>
+
+<nav class="tabs" aria-label="Pages">
+  <button class="tab" data-view="today" aria-current="page">Today</button>
+  <button class="tab" data-view="month">Monthly</button>
+</nav>
 
 <div id="sheetRoot"></div>
 <div class="toast" id="toast" hidden></div>
@@ -236,6 +288,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
       '<div class="row"><span class="q num">+'+fmt(m.qty)+'</span><span class="what"><b>'+esc(names[m.itemId])+'</b><div class="t num">'+timeOf(m.at)+'</div></span>'+
       (state.canWrite?'<button class="undo" data-undo="'+esc(m.id)+'">Undo</button>':'')+'</div>').join('')
       : '<div class="none">Nothing added today.</div>';
+    renderMonth();
   }
 
   // ---------- writes ----------
@@ -364,16 +417,101 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
   function rr(x,a,b,w,h,r){ x.beginPath(); x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r); x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath(); }
   function shareText(){
     const d=new Date();
+    if(view==='month'){ const {mi,items,rows,tot}=monthData();
+      return 'Alf3 · '+mi.name+' · Discharge\nDate | '+items.map(i=>i.name).join(' | ')+'\n'+
+        rows.filter(r=>!r.future).map(r=>pad(r.d)+' '+r.wd+' | '+r.vals.map(fmt).join(' | ')).join('\n')+
+        '\nTotal | '+tot.map(fmt).join(' | '); }
     return 'Alf3 · '+d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'\n'+
       sorted().map(it=>{const s=stats(it.id); return it.name+': discharge '+fmt(s.todayOut)+' · remaining '+fmt(s.bal);}).join('\n');
   }
   let shotBlob=null;
+  // ---------- monthly view ----------
+  let view='today', mOff=0;
+  function monthInfo(){
+    const n=new Date(); const d=new Date(n.getFullYear(), n.getMonth()+mOff, 1);
+    return {y:d.getFullYear(), m:d.getMonth(), days:new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(),
+      name:d.toLocaleDateString('en-GB',{month:'long',year:'numeric'})};
+  }
+  function monthData(){
+    const mi=monthInfo(), items=sorted(), map={};
+    for(const o of state.outs) map[o.itemId+'|'+o.date]=o.qty;
+    const tot=items.map(()=>0), rows=[];
+    for(let d=1; d<=mi.days; d++){
+      const key=mi.y+'-'+pad(mi.m+1)+'-'+pad(d), dt=new Date(mi.y, mi.m, d);
+      const vals=items.map((it,j)=>{ const v=map[it.id+'|'+key]||0; tot[j]+=v; return v; });
+      rows.push({d, key, wd:dt.toLocaleDateString('en-GB',{weekday:'short'}), dow:dt.getDay(), vals, future:key>today, now:key===today});
+    }
+    return {mi, items, rows, tot};
+  }
+  function renderMonth(){
+    if(!(state.ready.items && state.ready.outs)) return;
+    const {mi,items,rows,tot}=monthData();
+    $('#mName').textContent=mi.name; $('#mNext').disabled = mOff>=0;
+    $('#mHeadRow').innerHTML='<th>Date</th>'+items.map(i=>'<th>'+esc(i.name)+'</th>').join('');
+    $('#mBody').innerHTML=rows.map(r=>{
+      const cls=r.now?'now':r.future?'future':(r.dow===5||r.dow===6)?'fri':'';
+      return '<tr class="'+cls+'"><td class="d"><b class="num">'+pad(r.d)+'</b> '+r.wd+'</td>'+
+        r.vals.map(v=> r.future ? '<td class="z">·</td>' : v ? '<td class="num v">'+fmt(v)+'</td>' : '<td class="num z">0</td>').join('')+'</tr>';
+    }).join('');
+    $('#mFoot').innerHTML='<td>Total</td>'+tot.map(v=>'<td class="num v">'+fmt(v)+'</td>').join('');
+  }
+  function setView(v){
+    view=v;
+    $('#viewToday').hidden = v!=='today'; $('#viewMonth').hidden = v!=='month';
+    document.querySelectorAll('.tab').forEach(b=>{ if(b.dataset.view===v) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+    try{ localStorage.setItem('alf3-view', v); }catch(_){}
+    if(v==='month') renderMonth();
+    window.scrollTo(0,0);
+  }
+  try{ const sv=localStorage.getItem('alf3-view'); if(sv==='month') setView('month'); }catch(_){}
+
+  async function buildMonthImage(){
+    try{ await Promise.all([document.fonts.load('700 40px "IBM Plex Sans"'),document.fonts.load('600 40px "IBM Plex Sans"'),document.fonts.load('700 40px "IBM Plex Mono"')]); }catch(_){}
+    const K={bg:'#eef2f0',sf:'#ffffff',s2:'#f4f7f5',ln:'#d9e2dd',fg:'#15201b',mu:'#5d6b64',out:'#b8430f',outs:'#fbe6da',fade:'#b9c6c0'};
+    const F='"IBM Plex Sans", Arial, sans-serif', M='"IBM Plex Mono", Menlo, monospace';
+    const {mi,items,rows,tot}=monthData();
+    const W=1080, P=60, cw=W-2*P, y0=300, hh=72, rh=56, fh=80;
+    const H=y0+hh+rows.length*rh+fh+70;
+    const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+    const T=(s,X,Y,font,col,al)=>{ x.font=font; x.fillStyle=col; x.textAlign=al||'left'; x.fillText(s,X,Y); };
+    x.fillStyle=K.bg; x.fillRect(0,0,W,H); x.textBaseline='alphabetic';
+    const d=new Date();
+    T('Alf3',P,130,'700 92px '+M,K.fg);
+    T(mi.name,P,200,'700 44px '+F,K.fg);
+    T('DISCHARGE PER DAY',P,248,'600 26px '+F,K.out);
+    T('Updated '+d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' · '+pad(d.getHours())+':'+pad(d.getMinutes()),W-P,130,'600 28px '+F,K.mu,'right');
+    const colW=(cw-300)/Math.max(1,items.length), cx=j=>P+300+colW*(j+.5);
+    const tH=hh+rows.length*rh+fh;
+    x.save(); rr(x,P,y0,cw,tH,30); x.fillStyle=K.sf; x.fill(); x.clip();
+    x.fillStyle=K.s2; x.fillRect(P,y0,cw,hh); x.fillRect(P,y0+tH-fh,cw,fh);
+    rows.forEach((r,k)=>{ const ry=y0+hh+k*rh;
+      if(r.now){ x.fillStyle=K.outs; x.fillRect(P,ry,cw,rh); }
+      else if(!r.future && (r.dow===5||r.dow===6)){ x.fillStyle=K.s2; x.fillRect(P,ry,cw,rh); }
+      x.fillStyle=K.ln; x.fillRect(P,ry-1,cw,1.5); });
+    x.fillStyle=K.ln; x.fillRect(P,y0+tH-fh-1,cw,2);
+    x.restore(); x.strokeStyle=K.ln; x.lineWidth=2; rr(x,P,y0,cw,tH,30); x.stroke();
+    T('DATE',P+32,y0+46,'600 24px '+F,K.mu);
+    items.forEach((it,j)=>T(it.name,cx(j),y0+48,'700 34px '+M,K.fg,'center'));
+    rows.forEach((r,k)=>{ const by=y0+hh+k*rh+38;
+      const dc=r.future?K.fade:K.fg;
+      T(pad(r.d),P+32,by,'600 28px '+F,r.now?K.out:dc);
+      T(r.wd,P+84,by,'400 26px '+F,r.future?K.fade:K.mu);
+      r.vals.forEach((v,j)=>{
+        if(r.future) T('·',cx(j),by,'400 28px '+F,K.fade,'center');
+        else T(fmt(v),cx(j),by,(v?'700':'400')+' 28px '+F,v?K.out:K.fade,'center'); });
+    });
+    const fy=y0+tH-28;
+    T('Total',P+32,fy,'700 32px '+F,K.fg);
+    tot.forEach((v,j)=>T(fmt(v),cx(j),fy,'700 32px '+F,K.out,'center'));
+    return c;
+  }
+
   async function openShare(){
     shell('<div class="sh-head"><h2>Share image</h2><button class="x" data-close aria-label="Close">×</button></div><div class="hint">Preparing image…</div>');
-    const c=await buildImage();
+    const c = view==='month' ? await buildMonthImage() : await buildImage();
     shotBlob=await new Promise(r=>c.toBlob(r,'image/png'));
     shell('<div class="sh-head"><h2>Share image</h2><button class="x" data-close aria-label="Close">×</button></div>'+
-      '<img class="shot" src="'+c.toDataURL('image/png')+'" alt="Alf3 full page">'+
+      '<img class="shot" src="'+c.toDataURL('image/png')+'" alt="'+(view==='month'?'Alf3 monthly discharge':'Alf3 full page')+'">'+
       '<div class="hint">Press and hold the image to save or share it on WhatsApp.</div>'+
       '<div class="btns"><button class="btn primary" data-saveimg>Save image</button><button class="btn ghost" data-copytxt>Copy as text</button></div>'+
       '<div class="err" id="err"></div>');
@@ -383,6 +521,9 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
     const t=e.target;
     if(t.closest('[data-close]')){ closeSheet(); return; }
     if(t.closest('#shareBtn')){ openShare(); return; }
+    const tab=t.closest('.tab'); if(tab){ setView(tab.dataset.view); return; }
+    if(t.closest('#mPrev')){ mOff--; renderMonth(); return; }
+    if(t.closest('#mNext')){ if(mOff<0){ mOff++; renderMonth(); } return; }
     const plus=t.closest('[data-plus]'); if(plus){ openPlus(plus.dataset.plus); return; }
     const step=t.closest('[data-step]');
     if(step){ const q=$('#qty'); q.value=Math.max(1,(parseInt(q.value,10)||0)+Number(step.dataset.step)); $('#err').textContent=''; return; }
@@ -400,7 +541,7 @@ h3{margin:0 0 8px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;
       (async()=>{
         const dl = window.claude ? await window.claude.use('downloads') : null;
         if(!dl || !shotBlob){ $('#err').textContent='Saving is not available here. Press and hold the image instead.'; return; }
-        try{ await dl.save({filename:'Alf3-'+today+'.png', data:shotBlob}); toast('Image saved'); }
+        try{ await dl.save({filename:(view==='month'?'Alf3-'+monthInfo().y+'-'+pad(monthInfo().m+1)+'-monthly':'Alf3-'+today)+'.png', data:shotBlob}); toast('Image saved'); }
         catch(err){ if(!err||err.code!=='declined') $('#err').textContent='Not saved. Press and hold the image instead.'; }
       })();
       return;
