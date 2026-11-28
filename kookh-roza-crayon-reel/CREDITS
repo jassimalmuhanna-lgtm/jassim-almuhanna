@@ -1,0 +1,10 @@
+Kookh Roza (كوخ روزا) reel — credits for third-party material
+
+Style: "Crayon Picture Book" from Lemo-Opuscar by Lemomo (LemoLab), https://github.com/lemomo-ai/lemo-opuscar
+  - engine files gl.js, crayon.js, rig.js adapted from the style's demo: MIT licence
+  - style guide followed under CC BY-NC 4.0 with the library's extra permission to make your own (commercial) films
+Font: Baloo Bhaijaan 2 by Ek Type, SIL Open Font License 1.1 (fonts/OFL.txt), https://github.com/google/fonts/tree/main/ofl/baloobhaijaan2
+Voice: Google Gemini text-to-speech (gemini-3.8-flash-tts, voice "Zephyr"), generated speech; script by Kookh Roza
+Speech check: Google Gemini Flash transcription
+Music and sound effects: synthesized in code for this film (mix.py), no samples
+Logo, name, handles and contact details: Kookh Roza's own
